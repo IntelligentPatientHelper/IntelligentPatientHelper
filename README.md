@@ -98,3 +98,91 @@ The application includes a fallback to use in-memory data structures if the data
 This project is licensed under the MIT License - see the LICENSE file for details.
 
 KAFAYI YEMEK ÜZEREYİM ARTIK OLSUN.
+
+## Kurulum ve Çalıştırma Talimatları
+
+### Gereksinimler
+- Python 3.9 veya üstü
+- pip (Python paket yöneticisi)
+
+### Yeni Bir Bilgisayara Kurulum
+
+1. **Depoyu yeni bilgisayara kopyalayın:**
+   ```
+   git clone <repo-url> veya ZIP olarak indirip çıkartın
+   ```
+
+2. **Proje dizinine gidin:**
+   ```
+   cd IntelligentPatientHelper
+   ```
+
+3. **Sanal ortam oluşturun ve etkinleştirin:**
+   ```
+   # Windows
+   python -m venv .venv
+   .venv\Scripts\activate
+
+   # Mac/Linux
+   python3 -m venv .venv
+   source .venv/bin/activate
+   ```
+
+4. **Gerekli paketleri kurun:**
+   ```
+   pip install -r requirements.txt
+   ```
+
+### Uygulamayı Çalıştırma
+
+#### Tek Komutla Çalıştırma (Önerilen)
+Hem backend hem de frontend sunucularını tek bir komutla başlatmak için:
+
+```
+python start_app.py
+```
+
+Bu komut:
+1. Backend API sunucusunu 8005 portunda başlatır
+2. Frontend HTTP sunucusunu 8000 portunda başlatır
+3. Tarayıcıda açmanız gereken URL'yi gösterir
+
+Uygulama başladıktan sonra tarayıcınızda şu adresi açın: http://localhost:8000/index.html
+
+#### Manuel Çalıştırma
+İki farklı terminal penceresi açıp aşağıdaki komutları çalıştırabilirsiniz:
+
+**Backend (API) sunucusu için:**
+```
+python modified_main.py
+```
+
+**Frontend (HTTP) sunucusu için:**
+```
+python -m http.server 8000
+```
+
+### Veritabanı Bağlantısı
+
+Uygulama, NeonDB'yi kullanmaktadır. Eğer başka bir veritabanı kullanmak istiyorsanız, `modified_main.py` dosyasındaki `DATABASE_URL` değişkenini değiştirin:
+
+```python
+DATABASE_URL = "postgresql://kullanici:sifre@sunucu:port/veritabani?sslmode=require"
+```
+
+## Sorun Giderme
+
+### Backend Çalışmıyor
+Backend sunucusu (`modified_main.py`) çalışmıyorsa:
+1. Python paketlerinin kurulu olduğundan emin olun
+2. DATABASE_URL'nin doğru olduğunu kontrol edin
+
+### Frontend Çalışmıyor
+Frontend sunucusu çalışmıyorsa:
+1. 8000 portunun başka bir uygulama tarafından kullanılmadığından emin olun
+2. Python'un düzgün kurulu olduğunu kontrol edin
+
+### Veritabanı Bağlantı Sorunları
+1. Veritabanı bağlantı bilgilerinin doğru olduğunu kontrol edin
+2. NeonDB hesabınızın aktif olduğundan emin olun
+3. Ağ bağlantınızı kontrol edin
