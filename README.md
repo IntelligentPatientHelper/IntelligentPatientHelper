@@ -96,3 +96,4 @@ The application includes a fallback to use in-memory data structures if the data
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+..
