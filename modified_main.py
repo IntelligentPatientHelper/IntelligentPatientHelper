@@ -10,10 +10,9 @@ from datetime import datetime
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from typing import Optional, List
-from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
+# Doğrudan database bağlantı bilgilerini tanımlıyoruz
+DATABASE_URL = "postgresql://neondb_owner:npg_uBr4kN1VvOTf@ep-late-king-a5aqj7tw-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require"
 
 app = FastAPI()
 
@@ -29,13 +28,8 @@ app.add_middleware(
 # Database connection
 def connect_to_db():
     """Connect to NeonDB"""
-    database_url = os.getenv("DATABASE_URL")
-    if not database_url:
-        print("DATABASE_URL environment variable not set")
-        return None
-    
     try:
-        conn = psycopg2.connect(database_url)
+        conn = psycopg2.connect(DATABASE_URL)
         print("Successfully connected to NeonDB")
         return conn
     except Exception as e:
@@ -242,4 +236,4 @@ def list_appointments(tc_number: str):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8005, reload=True)
+    uvicorn.run("modified_main:app", host="0.0.0.0", port=8005, reload=True) 

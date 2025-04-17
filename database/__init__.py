@@ -9,38 +9,55 @@ import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from dotenv import load_dotenv
+from datetime import datetime
+import json
 
 # Load environment variables
 load_dotenv()
 
+class Base:
+    """Base class for database models"""
+    pass
 
 class Database:
+    """Database connection class"""
     def __init__(self):
+        """Initialize database connection"""
         self.conn = None
-        self.connect()
-
-    def connect(self):
-        """Connect to Neon PostgreSQL database"""
+        self.mock_patients = {}
+        self.mock_appointments = []
+        
+        # Try to connect to the database
         try:
-            # Get connection string from environment variable
-            database_url = os.getenv("DATABASE_URL")
-
-            if not database_url:
-                raise ValueError("DATABASE_URL environment variable not set")
-
-            # Connect to Neon DB
-            self.conn = psycopg2.connect(database_url)
-            self.conn.autocommit = True
-
-            # Create tables if they don't exist
-            self.create_tables()
-
-            print("Connected to Neon Database successfully!")
-
+            self.connect()
         except Exception as e:
             print(f"Database connection error: {e}")
-            # If connection fails, create in-memory data structures for testing
             self.init_mock_data()
+
+    def connect(self):
+        """Connect to the database"""
+        # Check if DATABASE_URL is set
+        database_url = os.getenv("DATABASE_URL")
+        if not database_url:
+            print("DATABASE_URL environment variable not set")
+            return False
+
+        # Connect to the database
+        try:
+            print("Connecting to NeonDB...")
+            self.conn = psycopg2.connect(database_url)
+            print("Successfully connected to NeonDB")
+            
+            # Create the necessary tables
+            print("Creating tables if they don't exist...")
+            self.create_tables()
+            print("Tables created/verified")
+            
+            return True
+        except Exception as e:
+            print(f"Database connection error: {e}")
+            self.conn = None
+            return False
 
     def create_tables(self):
         """Create necessary tables if they don't exist"""

@@ -4,8 +4,8 @@ const API_URL = 'http://localhost:8005/api';
 // Debug mode
 const DEBUG = true;
 
-// Mock data flag
-const USE_MOCK_DATA = true;
+// Mock data flag - NeonDB'ye kaydetmek için false yapıyoruz
+const USE_MOCK_DATA = false;
 
 // Load saved users from localStorage if available
 let MOCK_USERS = {
@@ -59,6 +59,11 @@ let currentPatient = null;
 document.addEventListener('DOMContentLoaded', () => {
     // Check if already logged in
     checkSession();
+    
+    // Migrate localStorage users to NeonDB
+    if (!USE_MOCK_DATA) {
+        migrateMockUsersToDB();
+    }
     
     // Login with Enter key
     tcInput.addEventListener('keypress', async (e) => {
@@ -333,4 +338,69 @@ function showNotification(message, type = 'info') {
     setTimeout(() => {
         notification.className = 'notification';
     }, 3000);
-} 
+}
+
+// Function to migrate mock users from localStorage to NeonDB
+async function migrateMockUsersToDB() {
+    try {
+        // Get users from localStorage
+        const savedUsers = localStorage.getItem('mockUsers');
+        if (!savedUsers) {
+            console.log('No saved users to migrate to DB');
+            return;
+        }
+        
+        const parsedUsers = JSON.parse(savedUsers);
+        console.log('Attempting to migrate users to NeonDB:', parsedUsers);
+        
+        // Loop through users and register them in DB if they don't exist
+        const registeredUsers = [];
+        const failedUsers = [];
+        
+        for (const [tcNumber, userData] of Object.entries(parsedUsers)) {
+            try {
+                // First check if user already exists in the database
+                console.log(`Checking if user ${tcNumber} exists in database...`);
+                const checkResponse = await fetch(`${API_URL}/patient/check/${tcNumber}`);
+                const checkResult = await checkResponse.json();
+                
+                if (checkResult.exists) {
+                    console.log(`User ${tcNumber} already exists in database, skipping registration.`);
+                    continue;
+                }
+                
+                // User doesn't exist, register them
+                console.log(`Registering user ${tcNumber} in database...`);
+                const registerResponse = await fetch(`${API_URL}/patient/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        tc_number: tcNumber,
+                        name: userData.name,
+                        email: userData.email,
+                        phone: userData.phone
+                    })
+                });
+                
+                if (!registerResponse.ok) {
+                    console.error(`Failed to register user ${tcNumber}:`, registerResponse.status, registerResponse.statusText);
+                    failedUsers.push(tcNumber);
+                    continue;
+                }
+                
+                console.log(`Successfully registered user ${tcNumber} in database.`);
+                registeredUsers.push(tcNumber);
+            } catch (error) {
+                console.error(`Error registering user ${tcNumber}:`, error);
+                failedUsers.push(tcNumber);
+            }
+        }
+        
+        console.log('Migration complete. Registered users:', registeredUsers);
+        console.log('Failed to register users:', failedUsers);
+    } catch (error) {
+        console.error('Error migrating users to NeonDB:', error);
+    }
+}

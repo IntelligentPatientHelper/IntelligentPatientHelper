@@ -4,8 +4,8 @@ const API_URL = 'http://localhost:8005/api';
 // Debug mode
 const DEBUG = true;
 
-// Mock data flag
-const USE_MOCK_DATA = true;
+// Mock data flag - NeonDB'ye kaydetmek için false yapıyoruz
+const USE_MOCK_DATA = false;
 
 // Mock data
 const MOCK_DATA = {
@@ -146,6 +146,11 @@ document.addEventListener('DOMContentLoaded', () => {
             await loginUser();
         }
     });
+
+    // Migrate localStorage users to NeonDB
+    if (!USE_MOCK_DATA) {
+        migrateMockUsersToDB();
+    }
 
     // Send message with Enter key
     userInput.addEventListener('keypress', async (e) => {
@@ -1362,5 +1367,92 @@ function loadPatientHealthHistory() {
         pastAppointmentsList.innerHTML = appointmentsHTML;
     } else {
         pastAppointmentsList.innerHTML = '<p>No past appointments recorded.</p>';
+    }
+}
+
+// Function to migrate mock users from localStorage to NeonDB
+async function migrateMockUsersToDB() {
+    try {
+        // Get users from localStorage
+        const savedUsers = localStorage.getItem('mockUsers');
+        if (!savedUsers) {
+            console.log('No saved users to migrate to DB');
+            return;
+        }
+        
+        const parsedUsers = JSON.parse(savedUsers);
+        console.log('Attempting to migrate users to NeonDB:', parsedUsers);
+        
+        // Loop through users and register them in DB if they don't exist
+        const registeredUsers = [];
+        const failedUsers = [];
+        
+        for (const [tcNumber, userData] of Object.entries(parsedUsers)) {
+            try {
+                // First check if user already exists in the database
+                console.log(`Checking if user ${tcNumber} exists in database...`);
+                const checkResponse = await fetch(`${API_URL}/patient/check/${tcNumber}`);
+                const checkResult = await checkResponse.json();
+                
+                if (checkResult.exists) {
+                    console.log(`User ${tcNumber} already exists in database, skipping`);
+                    continue;
+                }
+                
+                // Create date of birth if not available
+                const dob = userData.date_of_birth || '1990-01-01';
+                
+                // Register user in DB
+                const registrationData = {
+                    tc_number: tcNumber,
+                    name: userData.name,
+                    email: userData.email,
+                    phone: userData.phone,
+                    date_of_birth: dob,
+                    gender: ""
+                };
+                
+                console.log(`Registering user ${tcNumber} in database...`, registrationData);
+                
+                const response = await fetch(`${API_URL}/patient/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(registrationData)
+                });
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error(`Failed to register user ${tcNumber}:`, errorText);
+                    failedUsers.push(tcNumber);
+                    continue;
+                }
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    console.log(`Successfully migrated user ${tcNumber} to database`);
+                    registeredUsers.push(tcNumber);
+                } else {
+                    console.error(`Failed to register user ${tcNumber}:`, result.message);
+                    failedUsers.push(tcNumber);
+                }
+            } catch (error) {
+                console.error(`Error migrating user ${tcNumber} to database:`, error);
+                failedUsers.push(tcNumber);
+            }
+        }
+        
+        if (registeredUsers.length > 0) {
+            console.log(`Successfully migrated ${registeredUsers.length} users to database`);
+        }
+        
+        if (failedUsers.length > 0) {
+            console.error(`Failed to migrate ${failedUsers.length} users to database`);
+        }
+        
+    } catch (error) {
+        console.error('Error migrating users to database:', error);
     }
 } 
