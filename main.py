@@ -7,6 +7,7 @@ from datetime import datetime
 import random
 import json
 import os
+import uvicorn
 
 # Import our database connection
 from database import db
@@ -283,5 +284,4 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run("main:app", host="0.0.0.0", port=8005, reload=True)
