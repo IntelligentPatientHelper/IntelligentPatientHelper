@@ -234,6 +234,12 @@ def list_appointments(tc_number: str):
         cursor.close()
         conn.close()
 
+# Yeni endpoint ekliyoruz - Frontend'in kullandığı yolu desteklemek için
+@app.get("/api/appointments/patient/{tc_number}")
+def get_patient_appointments(tc_number: str):
+    """List all appointments for a patient - Alternative endpoint for frontend compatibility"""
+    return list_appointments(tc_number)
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("modified_main:app", host="0.0.0.0", port=8005, reload=True) 

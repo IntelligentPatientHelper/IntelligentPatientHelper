@@ -15,6 +15,9 @@ import json
 # Load environment variables
 load_dotenv()
 
+# NeonDB bağlantı URL'sini doğrudan tanımlıyoruz
+NEON_DATABASE_URL = "postgresql://neondb_owner:npg_uBr4kN1VvOTf@ep-late-king-a5aqj7tw-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require"
+
 class Base:
     """Base class for database models"""
     pass
@@ -36,8 +39,8 @@ class Database:
 
     def connect(self):
         """Connect to the database"""
-        # Check if DATABASE_URL is set
-        database_url = os.getenv("DATABASE_URL")
+        # Önce çevre değişkeninden DATABASE_URL'i kontrol et, yoksa sabit tanımlanmış URL'i kullan
+        database_url = os.getenv("DATABASE_URL", NEON_DATABASE_URL)
         if not database_url:
             print("DATABASE_URL environment variable not set")
             return False

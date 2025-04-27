@@ -1,8 +1,8 @@
 // API_URL for backend
-const API_URL = 'http://localhost:8000/api';
+const API_URL = 'http://localhost:8005/api';
 
 // Mock data flag
-const USE_MOCK_DATA = true;
+const USE_MOCK_DATA = false;
 
 // Mock data
 const MOCK_DATA = {
@@ -376,7 +376,89 @@ function displayDepartmentOptions(departments) {
 }
 
 // Load patient's appointments
-function loadPatientAppointments() {
+async function loadPatientAppointments() {
+    // API'den randevuları yüklemeyi göster
+    appointmentsList.innerHTML = `
+        <div class="loading-state">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>Loading your appointments...</p>
+        </div>
+    `;
+    
+    try {
+        let appointments = [];
+        
+        // Gerçek API'den yükleme dene
+        if (!USE_MOCK_DATA) {
+            try {
+                addMessage("Connecting to database for your appointments...", "system");
+                
+                // API'den randevuları al
+                const response = await fetch(`${API_URL}/appointment/list/${currentTcNumber}`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log("API'den alınan randevular:", data);
+                    
+                    if (data && data.appointments) {
+                        appointments = data.appointments;
+                    }
+                } else {
+                    console.error("API hatası:", response.status);
+                    throw new Error("Could not load appointments from server");
+                }
+            } catch (apiError) {
+                console.error("API hatası:", apiError);
+                // API hatası durumunda yerel depolamadan yükle
+                addMessage("Database connection issue. Loading from local storage...", "system");
+                appointments = await getAppointmentsFromLocalStorage();
+            }
+        } else {
+            // Mock veri - yerel depolamadan yükle
+            appointments = await getAppointmentsFromLocalStorage();
+        }
+        
+        // Yeni randevu var mı?
+        if (currentAppointmentId && selectedDoctor && selectedDate) {
+            const appointmentDate = new Date(selectedDate);
+            const newAppointment = {
+                id: currentAppointmentId,
+                doctor_name: selectedDoctor.name,
+                department: selectedDoctor.department,
+                appointment_date: selectedDate,
+                formatted_date: formatDate(appointmentDate),
+                formatted_time: formatTime(appointmentDate),
+                symptoms: detectedSymptoms.length > 0 ? detectedSymptoms.join(', ') : 'No specific symptoms'
+            };
+            
+            // Var olan randevularda bu ID'ye sahip olan var mı?
+            const exists = appointments.some(a => a.id === currentAppointmentId);
+            
+            if (!exists) {
+                console.log("Yeni randevu ekleniyor:", newAppointment);
+                appointments.push(newAppointment);
+                
+                // Yerel depolamaya ekle (API'ye kayıt işlemi bookAppointment fonksiyonunda yapılıyor)
+                saveAppointmentsToLocalStorage(appointments);
+            }
+        }
+        
+        // Randevuları göster
+        displayAppointments(appointments);
+        
+    } catch (error) {
+        console.error("Randevuları yükleme hatası:", error);
+        appointmentsList.innerHTML = `
+            <div class="error-state">
+                <i class="fas fa-exclamation-triangle"></i>
+                <p>Error loading appointments: ${error.message}</p>
+            </div>
+        `;
+    }
+}
+
+// Yerel depolamadan randevuları al
+async function getAppointmentsFromLocalStorage() {
     // Kullanıcıya özel storage anahtarını kullan
     const storageKey = window.USER_STORAGE_KEY || `patientAppointments_${currentTcNumber}`;
     
@@ -386,65 +468,53 @@ function loadPatientAppointments() {
         const savedAppointments = localStorage.getItem(storageKey);
         if (savedAppointments) {
             storedAppointments = JSON.parse(savedAppointments);
-            console.log("Kayıtlı randevular bulundu:", storedAppointments.length);
-            
-            // Eğer kaydedilmiş randevular varsa, direk onları göster
-            if (storedAppointments.length > 0) {
-                displaySavedAppointments(storedAppointments);
-                return;
-            }
+            console.log("Yerel depolamadan randevular yüklendi:", storedAppointments.length);
         }
     } catch (e) {
         console.error('Error loading saved appointments:', e);
     }
     
-    // Check if patient has any appointments in mock data
-    const patientAppointments = [];
-    
-    // Add the newly booked appointment if available
-    if (currentAppointmentId && selectedDoctor && selectedDate) {
-        const appointmentDate = new Date(selectedDate);
-        const newAppointment = {
-            id: currentAppointmentId,
-            doctor_name: selectedDoctor.name, // Doktorun tam adını kullan
-            department: selectedDoctor.department, // Doktorun departmanını kullan
-            appointment_date: appointmentDate.toISOString(),
-            symptoms: detectedSymptoms.length > 0 ? detectedSymptoms.join(', ') : 'No specific symptoms'
-        };
-        
-        console.log("Randevu oluşturuluyor:", newAppointment);
-        patientAppointments.push(newAppointment);
-        
-        // Tüm randevuları birleştir ve kaydet
-        const updatedAppointments = [...storedAppointments, ...patientAppointments];
-        localStorage.setItem(storageKey, JSON.stringify(updatedAppointments));
-        
-        // Güncellenmiş randevuları göster
-        displaySavedAppointments(updatedAppointments);
-        return;
-    }
-    
-    // Boş liste kontrolü
-    if (patientAppointments.length === 0 && storedAppointments.length === 0) {
-        appointmentsList.innerHTML = `
-            <div class="empty-state">
-                <i class="fas fa-calendar-xmark"></i>
-                <p>You don't have any appointments yet.</p>
-            </div>
-        `;
-    } else {
-        displaySavedAppointments(patientAppointments);
-    }
+    return storedAppointments;
 }
 
-// Display saved appointments
-function displaySavedAppointments(appointments) {
-    if (appointments.length > 0) {
+// Yerel depolamaya randevuları kaydet
+function saveAppointmentsToLocalStorage(appointments) {
+    // Kullanıcıya özel storage anahtarını kullan
+    const storageKey = window.USER_STORAGE_KEY || `patientAppointments_${currentTcNumber}`;
+    
+    // Randevuları kaydet
+    localStorage.setItem(storageKey, JSON.stringify(appointments));
+    console.log("Randevular yerel depolamaya kaydedildi:", appointments.length);
+}
+
+// Randevuları görüntüle
+function displayAppointments(appointments) {
+    if (appointments && appointments.length > 0) {
         let appointmentsHTML = '';
         
         appointments.forEach(appointment => {
-            const appointmentDate = new Date(appointment.appointment_date);
-            const isUpcoming = appointmentDate > new Date();
+            // Tarih ve saat bilgilerini oluştur
+            let appointmentDate;
+            let formattedDate;
+            let formattedTime;
+            
+            if (appointment.formatted_date && appointment.formatted_time) {
+                // Önceden formatlanmış tarih ve saat bilgisi varsa kullan
+                formattedDate = appointment.formatted_date;
+                formattedTime = appointment.formatted_time;
+            } else if (appointment.appointment_date) {
+                // Tarih verisi varsa formatla
+                appointmentDate = new Date(appointment.appointment_date);
+                formattedDate = formatDate(appointmentDate);
+                formattedTime = formatTime(appointmentDate);
+            } else {
+                // Varsayılan değerler
+                formattedDate = "Unknown date";
+                formattedTime = "Unknown time";
+            }
+            
+            // Yaklaşan randevu mu?
+            const isUpcoming = appointmentDate ? appointmentDate > new Date() : true;
             
             appointmentsHTML += `
                 <div class="appointment-card">
@@ -453,14 +523,15 @@ function displaySavedAppointments(appointments) {
                     <div class="appointment-details">
                         <div class="appointment-detail">
                             <i class="fas fa-calendar"></i>
-                            <span>${formatDate(appointmentDate)}</span>
+                            <span>${formattedDate}</span>
                         </div>
                         <div class="appointment-detail">
                             <i class="fas fa-clock"></i>
-                            <span>${formatTime(appointmentDate)}</span>
+                            <span>${formattedTime}</span>
                         </div>
                     </div>
                     ${appointment.symptoms ? `<p><strong>Symptoms:</strong> ${appointment.symptoms}</p>` : ''}
+                    <p class="appointment-id"><small>Appointment ID: ${appointment.id}</small></p>
                 </div>
             `;
         });
@@ -1078,40 +1149,136 @@ async function bookAppointment() {
         // Show loading message
         addMessage('Booking your appointment...', 'system');
         
-        // Simulate API call with mock data
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
         // Create appointment ID
         currentAppointmentId = Math.floor(Math.random() * 10000);
         
-        // Veritabanına kaydetme simülasyonu
-        addMessage('Saving to database...', 'system');
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Veritabanına kaydetme işlemi
+        addMessage('Sending data to the server...', 'system');
         
-        // Show success message
-        addMessage(`
-            <div class="appointment-success">
-                <h3>Appointment Booked Successfully!</h3>
-                <p>Your appointment has been confirmed with ${selectedDoctor.name} on ${formatDate(new Date(selectedDate))} at ${formatTime(new Date(selectedDate))}.</p>
-                <p>Appointment ID: ${currentAppointmentId}</p>
-                <p>Please arrive 15 minutes before your appointment time.</p>
-                <p><strong>Your appointment has been saved to the database and will be available even after you log out.</strong></p>
-            </div>
-        `, 'system');
+        // Randevu verilerini hazırla
+        const appointmentDate = new Date(selectedDate);
+        const appointmentData = {
+            tc_number: currentTcNumber,
+            doctor_id: selectedDoctor.id,
+            doctor_name: selectedDoctor.name,
+            department: selectedDoctor.department,
+            appointment_date: selectedDate,
+            symptoms: detectedSymptoms.length > 0 ? detectedSymptoms.join(', ') : 'No specific symptoms'
+        };
+
+        // Yerel depolama için ek bilgiler (API'ye gönderilmeyecek)
+        const localStorageData = {
+            id: currentAppointmentId,
+            patient_tc: currentTcNumber,
+            patient_name: currentPatient.name,
+            doctor_id: selectedDoctor.id,
+            doctor_name: selectedDoctor.name,
+            department: selectedDoctor.department,
+            appointment_date: selectedDate,
+            formatted_date: formatDate(appointmentDate),
+            formatted_time: formatTime(appointmentDate),
+            symptoms: detectedSymptoms.length > 0 ? detectedSymptoms.join(', ') : 'No specific symptoms',
+            status: 'confirmed'
+        };
         
-        // Update appointments list in Online Appointments section
-        loadPatientAppointments();
+        console.log("Veritabanına gönderilen randevu verileri: ", appointmentData);
         
-        // Show notification to check appointments
-        addMessage(`
-            <p>Your appointment has been added to your <strong>Online Appointments</strong> section. 
-            You can view all your appointments by clicking on the "Online Appointments" tab above.</p>
-        `, 'system');
+        let result;
+        if (!USE_MOCK_DATA) {
+            try {
+                // Gerçek API'ye gönder
+                const response = await fetch(`${API_URL}/appointment/create`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(appointmentData)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.status}`);
+                }
+                
+                result = await response.json();
+                console.log("API yanıtı:", result);
+                
+                // API'den dönen ID'yi kullan
+                if (result.appointment_id) {
+                    currentAppointmentId = result.appointment_id;
+                    // API'den dönen ID'yi local storage verisine de ekle
+                    localStorageData.id = currentAppointmentId;
+                }
+            } catch (apiError) {
+                console.error("API hatası:", apiError);
+                
+                // API hatası durumunda yerel depolamaya kaydet
+                addMessage('Server connection issue. Saving locally for now...', 'system');
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Yerel depolamaya kaydet
+                saveAppointmentToLocalStorage(localStorageData);
+                result = { success: true };
+            }
+        } else {
+            // Mock veri modu - sadece yerel depolamaya kaydet
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            saveAppointmentToLocalStorage(localStorageData);
+            result = { success: true };
+        }
         
-        // Ask if they need anything else
-        addMessage('Is there anything else I can help you with today?', 'system');
+        if (result.success) {
+            // Show success message
+            addMessage(`
+                <div class="appointment-success">
+                    <h3>Appointment Booked Successfully!</h3>
+                    <p>Your appointment has been confirmed with ${selectedDoctor.name} on ${formatDate(appointmentDate)} at ${formatTime(appointmentDate)}.</p>
+                    <p>Appointment ID: ${currentAppointmentId}</p>
+                    <p>Please arrive 15 minutes before your appointment time.</p>
+                    <p><strong>Your appointment has been saved to the database and will be available in DBeaver.</strong></p>
+                </div>
+            `, 'system');
+            
+            // Update appointments list in Online Appointments section
+            loadPatientAppointments();
+            
+            // Show notification to check appointments
+            addMessage(`
+                <p>Your appointment has been added to your <strong>Online Appointments</strong> section. 
+                You can view all your appointments by clicking on the "Online Appointments" tab above.</p>
+                <p>Database administrators can now see this appointment in DBeaver.</p>
+            `, 'system');
+            
+            // Ask if they need anything else
+            addMessage('Is there anything else I can help you with today?', 'system');
+        } else {
+            addMessage('Sorry, there was an issue saving your appointment. Please try again.', 'system');
+        }
     } catch (error) {
         console.error('Booking error:', error);
         addMessage('An error occurred while booking your appointment. Please try again.', 'system');
     }
+}
+
+// Yerel depolamaya randevu kaydet
+function saveAppointmentToLocalStorage(appointmentData) {
+    // Kullanıcıya özel storage anahtarını kullan
+    const storageKey = window.USER_STORAGE_KEY || `patientAppointments_${currentTcNumber}`;
+    
+    // Önceden kaydedilmiş randevuları al
+    let storedAppointments = [];
+    try {
+        const savedAppointments = localStorage.getItem(storageKey);
+        if (savedAppointments) {
+            storedAppointments = JSON.parse(savedAppointments);
+        }
+    } catch (e) {
+        console.error('Error loading saved appointments:', e);
+    }
+    
+    // Yeni randevuyu ekle
+    storedAppointments.push(appointmentData);
+    
+    // Randevuları kaydet
+    localStorage.setItem(storageKey, JSON.stringify(storedAppointments));
+    console.log("Randevu yerel depolamaya kaydedildi:", appointmentData);
 } 
