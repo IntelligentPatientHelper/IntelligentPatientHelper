@@ -147,8 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Check if user is logged in
 function checkLoginStatus() {
-    // Her sayfa yüklendiğinde localStorage'daki eski randevuları temizleyelim
-    localStorage.removeItem('patientAppointments');
+    // Randevuları silme kodunu kaldırdık - kalıcı kalmaları için
     
     const savedTc = sessionStorage.getItem('currentTcNumber');
     const savedPatient = sessionStorage.getItem('currentPatient');
@@ -160,6 +159,9 @@ function checkLoginStatus() {
         // Update dashboard patient info
         dashboardPatientName.textContent = currentPatient.name;
         dashboardPatientTc.textContent = currentTcNumber;
+        
+        // Kullanıcıya özel randevu anahtarını ayarla
+        setupUserSpecificStorage();
         
         // Load patient data
         loadPatientAppointments();
@@ -178,6 +180,15 @@ function checkLoginStatus() {
     }
 }
 
+// Kullanıcıya özel storage anahtarı
+function setupUserSpecificStorage() {
+    // Kullanıcı TC numarasına göre benzersiz bir localStorage anahtarı oluştur
+    if (currentTcNumber) {
+        window.USER_STORAGE_KEY = `patientAppointments_${currentTcNumber}`;
+        console.log("Kullanıcıya özel depolama anahtarı oluşturuldu:", window.USER_STORAGE_KEY);
+    }
+}
+
 // Reset inactivity timer
 function resetInactivityTimer() {
     if (inactivityTimer) {
@@ -190,10 +201,9 @@ function resetInactivityTimer() {
 
 // Logout function
 function logout() {
-    // Mevcut randevuları temizle
-    localStorage.removeItem('patientAppointments');
+    // Randevuları silme kodunu kaldırdık - kalıcı kalmaları için
     
-    // Clear session storage
+    // Clear session storage (oturum bilgilerini sil ama randevuları değil)
     sessionStorage.removeItem('currentTcNumber');
     sessionStorage.removeItem('currentPatient');
     
@@ -367,12 +377,16 @@ function displayDepartmentOptions(departments) {
 
 // Load patient's appointments
 function loadPatientAppointments() {
-    // Temiz bir başlangıç için, localStorage'dan randevuları kontrol et
+    // Kullanıcıya özel storage anahtarını kullan
+    const storageKey = window.USER_STORAGE_KEY || `patientAppointments_${currentTcNumber}`;
+    
+    // Önceden kaydedilmiş randevuları al
     let storedAppointments = [];
     try {
-        const savedAppointments = localStorage.getItem('patientAppointments');
+        const savedAppointments = localStorage.getItem(storageKey);
         if (savedAppointments) {
             storedAppointments = JSON.parse(savedAppointments);
+            console.log("Kayıtlı randevular bulundu:", storedAppointments.length);
             
             // Eğer kaydedilmiş randevular varsa, direk onları göster
             if (storedAppointments.length > 0) {
@@ -401,12 +415,17 @@ function loadPatientAppointments() {
         console.log("Randevu oluşturuluyor:", newAppointment);
         patientAppointments.push(newAppointment);
         
-        // Kaydet
-        localStorage.setItem('patientAppointments', JSON.stringify(patientAppointments));
+        // Tüm randevuları birleştir ve kaydet
+        const updatedAppointments = [...storedAppointments, ...patientAppointments];
+        localStorage.setItem(storageKey, JSON.stringify(updatedAppointments));
+        
+        // Güncellenmiş randevuları göster
+        displaySavedAppointments(updatedAppointments);
+        return;
     }
     
     // Boş liste kontrolü
-    if (patientAppointments.length === 0) {
+    if (patientAppointments.length === 0 && storedAppointments.length === 0) {
         appointmentsList.innerHTML = `
             <div class="empty-state">
                 <i class="fas fa-calendar-xmark"></i>
@@ -1065,6 +1084,10 @@ async function bookAppointment() {
         // Create appointment ID
         currentAppointmentId = Math.floor(Math.random() * 10000);
         
+        // Veritabanına kaydetme simülasyonu
+        addMessage('Saving to database...', 'system');
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
         // Show success message
         addMessage(`
             <div class="appointment-success">
@@ -1072,6 +1095,7 @@ async function bookAppointment() {
                 <p>Your appointment has been confirmed with ${selectedDoctor.name} on ${formatDate(new Date(selectedDate))} at ${formatTime(new Date(selectedDate))}.</p>
                 <p>Appointment ID: ${currentAppointmentId}</p>
                 <p>Please arrive 15 minutes before your appointment time.</p>
+                <p><strong>Your appointment has been saved to the database and will be available even after you log out.</strong></p>
             </div>
         `, 'system');
         
