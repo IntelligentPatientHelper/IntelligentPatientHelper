@@ -88,6 +88,9 @@ let inactivityTimer = null;
 let currentAppointmentId = null;
 let detectedSymptoms = [];
 
+// Global doktor listesi
+let allDoctors = [];
+
 // Event Listeners
 document.addEventListener('DOMContentLoaded', () => {
     // Check if user is logged in (via sessionStorage)
@@ -144,6 +147,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Check if user is logged in
 function checkLoginStatus() {
+    // Her sayfa yüklendiğinde localStorage'daki eski randevuları temizleyelim
+    localStorage.removeItem('patientAppointments');
+    
     const savedTc = sessionStorage.getItem('currentTcNumber');
     const savedPatient = sessionStorage.getItem('currentPatient');
     
@@ -184,19 +190,22 @@ function resetInactivityTimer() {
 
 // Logout function
 function logout() {
+    // Mevcut randevuları temizle
+    localStorage.removeItem('patientAppointments');
+    
     // Clear session storage
     sessionStorage.removeItem('currentTcNumber');
     sessionStorage.removeItem('currentPatient');
     
-    // Clear variables
     currentPatient = null;
     currentTcNumber = null;
     selectedDepartment = null;
     selectedDoctor = null;
     selectedDate = null;
     detectedSymptoms = [];
+    chatMessages.innerHTML = '';
     
-    // Redirect to login page
+    // Redirect back to login page
     window.location.href = 'index.html';
 }
 
@@ -356,45 +365,65 @@ function displayDepartmentOptions(departments) {
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
-// Other functions used in dashboard
 // Load patient's appointments
 function loadPatientAppointments() {
+    // Temiz bir başlangıç için, localStorage'dan randevuları kontrol et
+    let storedAppointments = [];
+    try {
+        const savedAppointments = localStorage.getItem('patientAppointments');
+        if (savedAppointments) {
+            storedAppointments = JSON.parse(savedAppointments);
+            
+            // Eğer kaydedilmiş randevular varsa, direk onları göster
+            if (storedAppointments.length > 0) {
+                displaySavedAppointments(storedAppointments);
+                return;
+            }
+        }
+    } catch (e) {
+        console.error('Error loading saved appointments:', e);
+    }
+    
     // Check if patient has any appointments in mock data
     const patientAppointments = [];
     
     // Add the newly booked appointment if available
-    if (currentAppointmentId) {
+    if (currentAppointmentId && selectedDoctor && selectedDate) {
         const appointmentDate = new Date(selectedDate);
-        patientAppointments.push({
+        const newAppointment = {
             id: currentAppointmentId,
-            doctor_name: selectedDoctor ? selectedDoctor.name : 'Dr. John Smith',
-            department: selectedDepartment,
-            appointment_date: appointmentDate,
-            symptoms: detectedSymptoms.join(', ')
-        });
-    }
-    
-    // For demo purposes, add a mock appointment if the list is empty
-    if (patientAppointments.length === 0 && Math.random() > 0.5) {
-        const today = new Date();
-        const futureDate = new Date();
-        futureDate.setDate(today.getDate() + Math.floor(Math.random() * 7) + 1);
-        futureDate.setHours(9 + Math.floor(Math.random() * 7), 0, 0, 0);
+            doctor_name: selectedDoctor.name, // Doktorun tam adını kullan
+            department: selectedDoctor.department, // Doktorun departmanını kullan
+            appointment_date: appointmentDate.toISOString(),
+            symptoms: detectedSymptoms.length > 0 ? detectedSymptoms.join(', ') : 'No specific symptoms'
+        };
         
-        patientAppointments.push({
-            id: Math.floor(Math.random() * 1000),
-            doctor_name: 'Dr. Sarah Johnson',
-            department: 'Cardiology',
-            appointment_date: futureDate,
-            symptoms: 'Chest pain, shortness of breath'
-        });
+        console.log("Randevu oluşturuluyor:", newAppointment);
+        patientAppointments.push(newAppointment);
+        
+        // Kaydet
+        localStorage.setItem('patientAppointments', JSON.stringify(patientAppointments));
     }
     
-    // Display appointments
-    if (patientAppointments.length > 0) {
+    // Boş liste kontrolü
+    if (patientAppointments.length === 0) {
+        appointmentsList.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-calendar-xmark"></i>
+                <p>You don't have any appointments yet.</p>
+            </div>
+        `;
+    } else {
+        displaySavedAppointments(patientAppointments);
+    }
+}
+
+// Display saved appointments
+function displaySavedAppointments(appointments) {
+    if (appointments.length > 0) {
         let appointmentsHTML = '';
         
-        patientAppointments.forEach(appointment => {
+        appointments.forEach(appointment => {
             const appointmentDate = new Date(appointment.appointment_date);
             const isUpcoming = appointmentDate > new Date();
             
@@ -430,8 +459,8 @@ function loadPatientAppointments() {
 
 // Load doctors data
 function loadDoctorsData() {
-    // Mock doctors data
-    const doctors = [
+    // Mock doctors data - Daha fazla doktor ve departman
+    allDoctors = [
         {
             id: "D1",
             name: "Dr. John Smith",
@@ -453,8 +482,8 @@ function loadDoctorsData() {
         {
             id: "D3",
             name: "Dr. Michael Brown",
-            department: "Orthopedics",
-            specialization: "Sports Medicine",
+            department: "Internal Medicine",
+            specialization: "General Internal Medicine",
             experience: "10 years",
             education: "Stanford University",
             languages: "English"
@@ -476,10 +505,130 @@ function loadDoctorsData() {
             experience: "14 years",
             education: "Columbia University",
             languages: "English, Italian"
+        },
+        {
+            id: "D6",
+            name: "Dr. Lisa Chen",
+            department: "ENT",
+            specialization: "Otolaryngology",
+            experience: "9 years",
+            education: "UCLA Medical School",
+            languages: "English, Mandarin"
+        },
+        {
+            id: "D7",
+            name: "Dr. James Taylor",
+            department: "Ophthalmology",
+            specialization: "Retina Specialist",
+            experience: "11 years",
+            education: "Duke University",
+            languages: "English"
+        },
+        {
+            id: "D8",
+            name: "Dr. Patricia Moore",
+            department: "Internal Medicine",
+            specialization: "Primary Care",
+            experience: "20 years",
+            education: "University of Pennsylvania",
+            languages: "English, Portuguese"
+        },
+        {
+            id: "D9",
+            name: "Dr. David Kim",
+            department: "Pulmonology",
+            specialization: "Respiratory Diseases",
+            experience: "13 years",
+            education: "University of Michigan",
+            languages: "English, Korean"
+        },
+        {
+            id: "D10",
+            name: "Dr. Olivia Martinez",
+            department: "Neurology",
+            specialization: "Movement Disorders",
+            experience: "16 years",
+            education: "Mayo Clinic College of Medicine",
+            languages: "English, Spanish"
+        },
+        {
+            id: "D11",
+            name: "Dr. Thomas Wright",
+            department: "Orthopedics",
+            specialization: "Sports Medicine",
+            experience: "12 years",
+            education: "Northwestern University",
+            languages: "English"
+        },
+        {
+            id: "D12",
+            name: "Dr. Jessica Lee",
+            department: "Cardiology",
+            specialization: "Heart Failure",
+            experience: "9 years",
+            education: "University of California San Francisco",
+            languages: "English, Korean"
+        },
+        {
+            id: "D13",
+            name: "Dr. Richard Allen",
+            department: "ENT",
+            specialization: "Head and Neck Surgery",
+            experience: "17 years",
+            education: "University of Washington",
+            languages: "English"
+        },
+        {
+            id: "D14",
+            name: "Dr. Sophia Patel",
+            department: "Ophthalmology",
+            specialization: "Glaucoma Treatment",
+            experience: "11 years",
+            education: "University of Chicago",
+            languages: "English, Hindi"
+        },
+        {
+            id: "D15",
+            name: "Dr. Daniel Rodriguez",
+            department: "Gastroenterology",
+            specialization: "Inflammatory Bowel Disease",
+            experience: "14 years",
+            education: "Vanderbilt University",
+            languages: "English, Spanish"
         }
     ];
     
-    displayDoctors(doctors);
+    // Departman filtresini güncelle
+    updateDepartmentFilter();
+    
+    // Doktorları görüntüle
+    displayDoctors(allDoctors);
+}
+
+// Departman filtresini güncelleme
+function updateDepartmentFilter() {
+    if (!departmentFilter) return;
+    
+    // Mevcut seçili değeri sakla
+    const currentSelection = departmentFilter.value;
+    
+    // Tüm departmanları topla
+    const departments = [...new Set(allDoctors.map(doctor => doctor.department))];
+    
+    // Filtre içeriğini oluştur
+    let filterHTML = '<option value="all">All Departments</option>';
+    
+    departments.forEach(department => {
+        filterHTML += `<option value="${department}">${department}</option>`;
+    });
+    
+    // Filtreyi güncelle
+    departmentFilter.innerHTML = filterHTML;
+    
+    // Önceki seçimi koru
+    if (currentSelection && departments.includes(currentSelection)) {
+        departmentFilter.value = currentSelection;
+    }
 }
 
 // Helper functions
@@ -586,13 +735,83 @@ function displayDoctors(doctors) {
             const doctorName = doctorCard.querySelector('h3').textContent;
             const doctorDept = doctorCard.querySelector('.doctor-department').textContent;
             
-            // Switch to AI Diagnosis tab
-            document.querySelector('.nav-tab[data-section="aiDiagnosisSection"]').click();
+            // Seçilen doktoru ve departmanı kaydet
+            selectedDepartment = doctorDept;
+            const selectedDoctorData = allDoctors.find(d => d.id === doctorId);
             
-            // Add message to chat
-            addMessage(`I'd like to book an appointment with ${doctorName} in the ${doctorDept} department.`, 'user');
+            if (selectedDoctorData) {
+                selectedDoctor = selectedDoctorData;
+                
+                // Switch to AI Diagnosis tab
+                document.querySelector('.nav-tab[data-section="aiDiagnosisSection"]').click();
+                
+                // Add message to chat
+                addMessage(`I'd like to book an appointment with ${doctorName} in the ${doctorDept} department.`, 'user');
+                
+                // Typing indicator
+                addTypingIndicator();
+                
+                setTimeout(() => {
+                    removeTypingIndicator();
+                    addMessage(`Great choice! Dr. ${selectedDoctorData.name.split(' ')[1]} is a specialist in ${selectedDoctorData.specialization}.`, 'system');
+                    addMessage(`Let me help you book an appointment with ${doctorName}.`, 'system');
+                    
+                    // Randevu sürecine devam et
+                    proceedToBooking();
+                }, 1500);
+            }
         });
     });
+}
+
+// Randevu işlemine devam et
+function proceedToBooking() {
+    if (!selectedDoctor) return;
+    
+    // Tarih seçimi için typing indicator göster
+    addTypingIndicator();
+    
+    setTimeout(() => {
+        removeTypingIndicator();
+        
+        // Tarih seçimini göster
+        addMessage(`Please select a date for your appointment with ${selectedDoctor.name}:`, 'system');
+        
+        // Tarih seçenekleri
+        const dateContainer = document.createElement('div');
+        dateContainer.className = 'date-options';
+        
+        // Generate next 5 days
+        const today = new Date();
+        const dates = [];
+        
+        for (let i = 1; i <= 5; i++) {
+            const date = new Date();
+            date.setDate(today.getDate() + i);
+            dates.push(date);
+        }
+        
+        dates.forEach(date => {
+            const dateButton = document.createElement('button');
+            dateButton.className = 'date-button';
+            dateButton.textContent = formatDate(date);
+            dateButton.addEventListener('click', () => selectDate(date));
+            dateContainer.appendChild(dateButton);
+        });
+        
+        const messageElement = document.createElement('div');
+        messageElement.className = 'message system';
+        
+        const contentElement = document.createElement('div');
+        contentElement.className = 'message-content';
+        contentElement.appendChild(dateContainer);
+        
+        messageElement.appendChild(contentElement);
+        chatMessages.appendChild(messageElement);
+        
+        // Scroll to bottom
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }, 1500);
 }
 
 // Filter doctors by department
@@ -684,28 +903,42 @@ function selectDepartment(department) {
     setTimeout(() => {
         removeTypingIndicator();
         
-        // Display doctors for the selected department
-        const doctors = [
-            { id: "D1", name: "Dr. John Smith", department, available: true },
-            { id: "D2", name: "Dr. Sarah Johnson", department, available: true },
-            { id: "D3", name: "Dr. Michael Brown", department, available: true }
-        ];
+        // Seçilen departmana göre doktorları filtrele
+        const departmentDoctors = allDoctors.filter(doctor => doctor.department === department);
+        
+        if (departmentDoctors.length === 0) {
+            addMessage(`Sorry, there are no doctors available in the ${department} department at the moment.`, 'system');
+            return;
+        }
+        
+        // Internal Medicine departmanı için Dr. Michael Brown'ı ilk sıraya getir
+        if (department === "Internal Medicine") {
+            // Dr. Michael Brown'ı bul ve listeden çıkar
+            const michaelBrownIndex = departmentDoctors.findIndex(d => d.name === "Dr. Michael Brown");
+            if (michaelBrownIndex !== -1) {
+                const michaelBrown = departmentDoctors.splice(michaelBrownIndex, 1)[0];
+                // Listenin başına ekle
+                departmentDoctors.unshift(michaelBrown);
+            }
+        }
+        
+        addMessage(`I found ${departmentDoctors.length} doctors in the ${department} department. Please select one:`, 'system');
         
         // Display doctor options
         const doctorContainer = document.createElement('div');
         doctorContainer.className = 'doctor-options';
         
-        doctors.forEach(doctor => {
+        departmentDoctors.forEach(doctor => {
             const doctorButton = document.createElement('button');
             doctorButton.className = 'doctor-button';
             doctorButton.textContent = doctor.name;
             doctorButton.addEventListener('click', () => {
-                addMessage(`You've selected ${doctor.name}. Redirecting to appointments tab...`, 'system');
+                // Seçilen doktoru kaydet
+                selectedDoctor = doctor;
+                addMessage(`You've selected ${doctor.name}, ${doctor.specialization}.`, 'system');
                 
-                // Switch to appointments tab
-                setTimeout(() => {
-                    document.querySelector('.nav-tab[data-section="appointmentsSection"]').click();
-                }, 1500);
+                // Randevu sürecine devam et
+                proceedToBooking();
             });
             doctorContainer.appendChild(doctorButton);
         });
@@ -723,4 +956,138 @@ function selectDepartment(department) {
         // Scroll to bottom
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }, 1500);
+}
+
+// Tarih seçimi
+function selectDate(date) {
+    const formattedDate = formatDate(date);
+    
+    addMessage(`You've selected ${formattedDate}. Let me show you the available time slots.`, 'system');
+    
+    // Show typing indicator
+    addTypingIndicator();
+    
+    // Simulate API call to get available time slots
+    setTimeout(() => {
+        removeTypingIndicator();
+        
+        // Show available time slots
+        displayAvailableTimeSlots(date);
+    }, 1500);
+}
+
+// Saat dilimlerini göster
+function displayAvailableTimeSlots(date) {
+    addMessage(`Here are the available time slots for ${formatDate(date)} with ${selectedDoctor.name}:`, 'system');
+    
+    const timeContainer = document.createElement('div');
+    timeContainer.className = 'time-options';
+    
+    // Generate time slots (9 AM to 5 PM, 1-hour intervals)
+    const timeSlots = [];
+    
+    for (let hour = 9; hour <= 16; hour++) {
+        const time = new Date(date);
+        time.setHours(hour, 0, 0, 0);
+        timeSlots.push(time);
+    }
+    
+    timeSlots.forEach(time => {
+        const timeButton = document.createElement('button');
+        timeButton.className = 'time-button';
+        timeButton.textContent = formatTime(time);
+        timeButton.addEventListener('click', () => finalizeAppointment(time));
+        timeContainer.appendChild(timeButton);
+    });
+    
+    const messageElement = document.createElement('div');
+    messageElement.className = 'message system';
+    
+    const contentElement = document.createElement('div');
+    contentElement.className = 'message-content';
+    contentElement.appendChild(timeContainer);
+    
+    messageElement.appendChild(contentElement);
+    chatMessages.appendChild(messageElement);
+    
+    // Scroll to bottom
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// Randevuyu onayla
+function finalizeAppointment(dateTime) {
+    selectedDate = dateTime.toISOString();
+    
+    // Show appointment summary
+    addMessage(`
+        <div class="appointment-summary">
+            <h3>Appointment Summary</h3>
+            <p><strong>Department:</strong> ${selectedDoctor.department}</p>
+            <p><strong>Doctor:</strong> ${selectedDoctor.name}</p>
+            <p><strong>Date & Time:</strong> ${formatDate(dateTime)} at ${formatTime(dateTime)}</p>
+            <p><strong>Symptoms:</strong> ${detectedSymptoms.length > 0 ? detectedSymptoms.join(', ') : 'No specific symptoms'}</p>
+        </div>
+    `, 'system');
+    
+    // Add confirmation buttons
+    const confirmContainer = document.createElement('div');
+    confirmContainer.className = 'confirmation-buttons';
+    confirmContainer.innerHTML = `
+        <button id="confirmButton" class="confirm-button" aria-label="Confirm appointment">Confirm Appointment</button>
+        <button id="cancelButton" class="cancel-button" aria-label="Cancel appointment">Cancel</button>
+    `;
+    chatMessages.appendChild(confirmContainer);
+    
+    // Add event listeners to confirmation buttons
+    document.getElementById('confirmButton').addEventListener('click', async () => {
+        // Book the appointment
+        await bookAppointment();
+    });
+    
+    document.getElementById('cancelButton').addEventListener('click', () => {
+        addMessage('Appointment booking cancelled.', 'system');
+        addMessage('How else can I help you today?', 'system');
+    });
+    
+    // Scroll to bottom
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// Randevuyu kaydet
+async function bookAppointment() {
+    try {
+        // Show loading message
+        addMessage('Booking your appointment...', 'system');
+        
+        // Simulate API call with mock data
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        // Create appointment ID
+        currentAppointmentId = Math.floor(Math.random() * 10000);
+        
+        // Show success message
+        addMessage(`
+            <div class="appointment-success">
+                <h3>Appointment Booked Successfully!</h3>
+                <p>Your appointment has been confirmed with ${selectedDoctor.name} on ${formatDate(new Date(selectedDate))} at ${formatTime(new Date(selectedDate))}.</p>
+                <p>Appointment ID: ${currentAppointmentId}</p>
+                <p>Please arrive 15 minutes before your appointment time.</p>
+            </div>
+        `, 'system');
+        
+        // Update appointments list in Online Appointments section
+        loadPatientAppointments();
+        
+        // Show notification to check appointments
+        addMessage(`
+            <p>Your appointment has been added to your <strong>Online Appointments</strong> section. 
+            You can view all your appointments by clicking on the "Online Appointments" tab above.</p>
+        `, 'system');
+        
+        // Ask if they need anything else
+        addMessage('Is there anything else I can help you with today?', 'system');
+    } catch (error) {
+        console.error('Booking error:', error);
+        addMessage('An error occurred while booking your appointment. Please try again.', 'system');
+    }
 } 

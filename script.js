@@ -31,12 +31,11 @@ const MOCK_DATA = {
     doctorRecommendations: {
         "available_doctors": [
             {
-                "name": "Dr. Jane Smith",
-                "specialization": "Neurology",
-                "past_visit": {"date": "2024-01-15", "diagnosis": "Migraine"}
+                "name": "Dr. Michael Brown",
+                "specialization": "Neurology"
             },
             {
-                "name": "Dr. John Davis",
+                "name": "Dr. John Smith",
                 "specialization": "Neurology"
             },
             {
@@ -51,7 +50,7 @@ const MOCK_DATA = {
         "appointment_id": 123,
         "department": "Neurology",
         "appointment_date": "2024-04-15T14:30:00",
-        "doctor_name": "Dr. Jane Smith"
+        "doctor_name": "Dr. Michael Brown"
     }
 };
 
@@ -140,6 +139,9 @@ const pastAppointmentsList = document.getElementById('pastAppointmentsList');
 
 // Event Listeners
 document.addEventListener('DOMContentLoaded', () => {
+    // Mevcut randevuları temizle
+    localStorage.removeItem('patientAppointments');
+    
     // Login with Enter key
     tcInput.addEventListener('keypress', async (e) => {
         if (e.key === 'Enter') {
@@ -228,6 +230,9 @@ function resetInactivityTimer() {
 
 // Logout function
 function logout() {
+    // Mevcut randevuları temizle
+    localStorage.removeItem('patientAppointments');
+    
     currentPatient = null;
     currentTcNumber = null;
     selectedDepartment = null;
@@ -669,11 +674,22 @@ async function fetchDoctorsForDepartment(department) {
     try {
         // In a real app, we would make an API call here
         // For now, we'll create mock data
-        const doctors = [
-            { id: "D1", name: "Dr. John Smith", department: department, available: true },
-            { id: "D2", name: "Dr. Sarah Johnson", department: department, available: true },
-            { id: "D3", name: "Dr. Michael Brown", department: department, available: true }
-        ];
+        let doctors = [];
+        
+        if (department === "Internal Medicine") {
+            // For Internal Medicine, ensure Dr. Michael Brown is listed first
+            doctors = [
+                { id: "D3", name: "Dr. Michael Brown", department: department, available: true },
+                { id: "D1", name: "Dr. John Smith", department: department, available: true },
+                { id: "D2", name: "Dr. Sarah Johnson", department: department, available: true }
+            ];
+        } else {
+            doctors = [
+                { id: "D1", name: "Dr. John Smith", department: department, available: true },
+                { id: "D2", name: "Dr. Sarah Johnson", department: department, available: true },
+                { id: "D3", name: "Dr. Michael Brown", department: department, available: true }
+            ];
+        }
         
         displayDoctorOptions(doctors);
     } catch (error) {
@@ -1006,19 +1022,42 @@ function showNotification(message, type = 'info') {
 
 // Function to load patient's appointments
 function loadPatientAppointments() {
+    // Temiz bir başlangıç için, mevcut randevuları sıfırla
+    if (currentAppointmentId === null) {
+        localStorage.removeItem('patientAppointments');
+    }
+    
+    // Daha önce localStorage'a kaydedilmiş randevuları kontrol et
+    let storedAppointments = [];
+    try {
+        const savedAppointments = localStorage.getItem('patientAppointments');
+        if (savedAppointments) {
+            storedAppointments = JSON.parse(savedAppointments);
+        }
+    } catch (e) {
+        console.error('Error loading saved appointments:', e);
+    }
+    
     // Check if patient has any appointments in mock data
-    const patientAppointments = [];
+    const patientAppointments = [...storedAppointments];
     
     // Add the newly booked appointment if available
     if (currentAppointmentId) {
         const appointmentDate = new Date(selectedDate);
-        patientAppointments.push({
+        
+        // Yeni randevuyu ekle
+        const newAppointment = {
             id: currentAppointmentId,
-            doctor_name: selectedDoctor ? selectedDoctor.name : 'Dr. John Smith',
+            doctor_name: selectedDoctor ? selectedDoctor.name : 'Dr. Michael Brown',
             department: selectedDepartment,
-            appointment_date: appointmentDate,
+            appointment_date: appointmentDate.toISOString(), // ISO formatında kaydet
             symptoms: detectedSymptoms.join(', ')
-        });
+        };
+        
+        patientAppointments.push(newAppointment);
+        
+        // Randevuları localStorage'a kaydet
+        localStorage.setItem('patientAppointments', JSON.stringify(patientAppointments));
     }
     
     // For demo purposes, add a mock appointment if the list is empty
@@ -1028,13 +1067,19 @@ function loadPatientAppointments() {
         futureDate.setDate(today.getDate() + Math.floor(Math.random() * 7) + 1);
         futureDate.setHours(9 + Math.floor(Math.random() * 7), 0, 0, 0);
         
-        patientAppointments.push({
+        // Use the selected doctor instead of hardcoded "Dr. Sarah Johnson"
+        const mockAppointment = {
             id: Math.floor(Math.random() * 1000),
-            doctor_name: 'Dr. Sarah Johnson',
-            department: 'Cardiology',
-            appointment_date: futureDate,
-            symptoms: 'Chest pain, shortness of breath'
-        });
+            doctor_name: selectedDoctor ? selectedDoctor.name : 'Dr. Michael Brown',
+            department: selectedDepartment || 'Internal Medicine',
+            appointment_date: futureDate.toISOString(), // ISO formatında kaydet
+            symptoms: detectedSymptoms.length > 0 ? detectedSymptoms.join(', ') : 'Chest pain, shortness of breath'
+        };
+        
+        patientAppointments.push(mockAppointment);
+        
+        // Mock randevuyu da localStorage'a kaydet
+        localStorage.setItem('patientAppointments', JSON.stringify(patientAppointments));
     }
     
     // Display appointments
