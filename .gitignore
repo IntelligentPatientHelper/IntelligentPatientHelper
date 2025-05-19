@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Ortam değişkenleri - hassas veriler
+.env
+
+# Sanal ortam
+venv/
+ENV/
+.venv/
+
+# IDE dosyaları
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Log dosyaları
+*.log
+
+# Veritabanı dosyaları
+*.db
+*.sqlite3
+
+# Sistem dosyaları
+.DS_Store
+Thumbs.db
