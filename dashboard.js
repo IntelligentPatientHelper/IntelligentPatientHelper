@@ -1154,11 +1154,24 @@ function filterDoctorsByDepartment(department) {
 }
 
 // Load patient health history
-function loadPatientHealthHistory() {
-    // Mock health history data from MOCK_DATA
-    const healthHistory = MOCK_DATA.patientHistory;
-    
-    // Display past conditions
+async function loadPatientHealthHistory() {
+    let healthHistory = null;
+    try {
+        // Giriş yapan hastanın TC numarasını al
+        const tcNumber = currentTcNumber;
+        if (!tcNumber) throw new Error("TC numarası bulunamadı");
+        // API'den sağlık geçmişi verisini çek
+        const response = await fetch(`${API_URL}/health_history/${tcNumber}`);
+        if (!response.ok) throw new Error("API'den sağlık geçmişi alınamadı");
+        healthHistory = await response.json();
+    } catch (err) {
+        // Hata olursa kullanıcıya bilgi ver
+        pastConditionsList.innerHTML = '<p>Sağlık geçmişi verisi bulunamadı.</p>';
+        medicationsList.innerHTML = '<p>Sağlık geçmişi verisi bulunamadı.</p>';
+        pastAppointmentsList.innerHTML = '<p>Sağlık geçmişi verisi bulunamadı.</p>';
+        return;
+    }
+    // Geçmiş hastalıkları göster
     let conditionsHTML = '';
     if (healthHistory.past_conditions && healthHistory.past_conditions.length > 0) {
         healthHistory.past_conditions.forEach(condition => {
@@ -1173,21 +1186,19 @@ function loadPatientHealthHistory() {
     } else {
         pastConditionsList.innerHTML = '<p>No past conditions recorded.</p>';
     }
-    
-    // Display medications
+    // İlaçları göster
     let medicationsHTML = '';
     if (healthHistory.medications && healthHistory.medications.length > 0) {
         healthHistory.medications.forEach(medication => {
             const statusTag = medication.status === 'active' 
                 ? '<span class="active-medication">Current</span>' 
                 : '<span class="past-medication">Past</span>';
-            
             medicationsHTML += `
                 <li>
                     <i class="fas fa-pills"></i>
                     <div>
                         <span class="medication-name">${medication.name} ${statusTag}</span>
-                        <p class="medication-details">${medication.dosage}, ${medication.frequency}</p>
+                        <p class="medication-details">${medication.dosage ? medication.dosage : ''}${medication.dosage && medication.frequency ? ', ' : ''}${medication.frequency ? medication.frequency : ''}</p>
                     </div>
                 </li>
             `;
@@ -1196,8 +1207,7 @@ function loadPatientHealthHistory() {
     } else {
         medicationsList.innerHTML = '<p>No medications recorded.</p>';
     }
-    
-    // Display past appointments
+    // Geçmiş randevuları göster
     let appointmentsHTML = '';
     if (healthHistory.past_appointments && healthHistory.past_appointments.length > 0) {
         healthHistory.past_appointments.forEach(appointment => {
