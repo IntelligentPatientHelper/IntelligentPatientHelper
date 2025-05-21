@@ -97,92 +97,91 @@ The application includes a fallback to use in-memory data structures if the data
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-KAFAYI YEMEK ÜZEREYİM ARTIK OLSUN.
+## Installation and Startup Instructions
 
-## Kurulum ve Çalıştırma Talimatları
+### Requirements
+- Python 3.9 or later
+- pip (Python package manager)
 
-### Gereksinimler
-- Python 3.9 veya üstü
-- pip (Python paket yöneticisi)
+### Installing on a New Computer
 
-### Yeni Bir Bilgisayara Kurulum
+1. **Copy the repository to the new computer:**
+```
 
-1. **Depoyu yeni bilgisayara kopyalayın:**
-   ```
-   git clone <repo-url> veya ZIP olarak indirip çıkartın
-   ```
+git clone <repo-url> or download and extract as a ZIP
+```
 
-2. **Proje dizinine gidin:**
-   ```
-   cd IntelligentPatientHelper
-   ```
+2. **Go to the project directory:**
+```
+cd IntelligentPatientHelper
+```
 
-3. **Sanal ortam oluşturun ve etkinleştirin:**
-   ```
-   # Windows
-   python -m venv .venv
-   .venv\Scripts\activate
+3. **Create and activate the virtual environment:**
+```
+# Windows
+python -m venv .venv
+.venv\Scripts\activate
 
-   # Mac/Linux
-   python3 -m venv .venv
-   source .venv/bin/activate
-   ```
+# Mac/Linux
+python3 -m venv .venv
+source .venv/bin/activate
+```
 
-4. **Gerekli paketleri kurun:**
-   ```
-   pip install -r requirements.txt
-   ```
+4. **Install the required packages:**
+```
+pip install -r requirements.txt
+```
 
-### Uygulamayı Çalıştırma
+### Running the Application
 
-#### Tek Komutla Çalıştırma (Önerilen)
-Hem backend hem de frontend sunucularını tek bir komutla başlatmak için:
+#### Running with a Single Command (Recommended)
+To start both the backend and frontend servers with a single command:
 
 ```
 python start_app.py
 ```
 
-Bu komut:
-1. Backend API sunucusunu 8005 portunda başlatır
-2. Frontend HTTP sunucusunu 8000 portunda başlatır
-3. Tarayıcıda açmanız gereken URL'yi gösterir
+This command:
+1. Starts the Backend API server on port 8005
+2. Starts the Frontend HTTP server on port 8000
+3. Shows the URL you need to open in the browser
 
-Uygulama başladıktan sonra tarayıcınızda şu adresi açın: http://localhost:8000/index.html
+Once the application starts, open the following address in your browser: http://localhost:8000/index.html
 
-#### Manuel Çalıştırma
-İki farklı terminal penceresi açıp aşağıdaki komutları çalıştırabilirsiniz:
+#### Manual Run
+You can open two different terminal windows and run the following commands:
 
-**Backend (API) sunucusu için:**
+**For the Backend (API) server:**
 ```
 python modified_main.py
 ```
 
-**Frontend (HTTP) sunucusu için:**
+**For the Frontend (HTTP) server:**
 ```
 python -m http.server 8000
 ```
 
-### Veritabanı Bağlantısı
+### Database Connection
 
-Uygulama, NeonDB'yi kullanmaktadır. Eğer başka bir veritabanı kullanmak istiyorsanız, `modified_main.py` dosyasındaki `DATABASE_URL` değişkenini değiştirin:
+The application, It uses NeonDB. If you want to use another database, change the `DATABASE_URL` variable in the `modified_main.py` file:
 
 ```python
-DATABASE_URL = "postgresql://kullanici:sifre@sunucu:port/veritabani?sslmode=require"
+DATABASE_URL = "postgresql://user:password@server:port/veritabani?sslmode=require"
 ```
 
-## Sorun Giderme
+## Troubleshooting
 
-### Backend Çalışmıyor
-Backend sunucusu (`modified_main.py`) çalışmıyorsa:
-1. Python paketlerinin kurulu olduğundan emin olun
-2. DATABASE_URL'nin doğru olduğunu kontrol edin
+### Backend Not Working
+If the backend server (`modified_main.py`) is not working:
+1. Make sure that the Python packages are installed
+2. Make sure that the DATABASE_URL is correct
 
-### Frontend Çalışmıyor
-Frontend sunucusu çalışmıyorsa:
-1. 8000 portunun başka bir uygulama tarafından kullanılmadığından emin olun
-2. Python'un düzgün kurulu olduğunu kontrol edin
+### Frontend Not Working
+If the frontend server is not working:
+1. Make sure that port 8000 is not being used by another application
+2. Make sure that Python is properly installed
 
-### Veritabanı Bağlantı Sorunları
-1. Veritabanı bağlantı bilgilerinin doğru olduğunu kontrol edin
-2. NeonDB hesabınızın aktif olduğundan emin olun
-3. Ağ bağlantınızı kontrol edin
+### Database Connection Problems
+1. Make sure that the database connection information is correct
+2. Make sure that your NeonDB account is active
+3. Check your network connection
